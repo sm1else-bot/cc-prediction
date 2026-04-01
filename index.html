@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Credit Card Spend Forecasting - Jessenth Ebenezer</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:       #1d4ed8;
+      --blue-light: #eff6ff;
+      --blue-mid:   #3b82f6;
+      --text:       #0f172a;
+      --muted:      #64748b;
+      --border:     #e2e8f0;
+      --bg:         #ffffff;
+      --bg-alt:     #f8fafc;
+      --radius:     10px;
+      --shadow:     0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: "Helvetica Neue", Helvetica, Arial, -apple-system, sans-serif;
+      font-size: 16px;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.6;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: 1100px; margin: 0 auto;
+      padding: 0 24px;
+      height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-brand { font-weight: 600; font-size: 15px; color: var(--text); text-decoration: none; }
+    .nav-brand span { color: var(--blue); }
+    .nav-links { display: flex; gap: 28px; list-style: none; }
+    .nav-links a {
+      font-size: 14px; color: var(--muted); text-decoration: none;
+      transition: color .2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-gh {
+      font-size: 13px; font-weight: 500;
+      padding: 6px 14px; border-radius: 6px;
+      background: var(--text); color: #fff;
+      text-decoration: none; transition: opacity .2s;
+    }
+    .nav-gh:hover { opacity: .8; }
+
+    /* ── SECTIONS ── */
+    section { padding: 88px 24px; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    .section-label {
+      font-size: 12px; font-weight: 600; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--blue);
+      margin-bottom: 12px;
+    }
+    h1 { font-size: clamp(2rem, 4vw, 3rem); font-weight: 700; line-height: 1.15; letter-spacing: -.02em; }
+    h2 { font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; letter-spacing: -.015em; margin-bottom: 12px; }
+    h3 { font-size: 1rem; font-weight: 600; margin-bottom: 6px; }
+    p { color: var(--muted); max-width: 640px; }
+
+    /* ── HERO ── */
+    #hero { background: var(--bg); padding-top: 96px; padding-bottom: 96px; }
+    .hero-tag {
+      display: inline-block;
+      font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+      color: var(--blue); background: var(--blue-light);
+      padding: 4px 10px; border-radius: 20px; margin-bottom: 24px;
+    }
+    .hero-sub {
+      font-size: 1.15rem; color: var(--muted);
+      margin: 20px 0 48px; max-width: 580px; line-height: 1.7;
+    }
+    .hero-stats {
+      display: flex; flex-wrap: wrap; gap: 16px;
+    }
+    .stat-card {
+      background: var(--bg-alt); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px 28px;
+    }
+    .stat-card .val {
+      font-size: 1.75rem; font-weight: 700; color: var(--text); line-height: 1;
+    }
+    .stat-card .val span { font-size: 1rem; font-weight: 400; color: var(--muted); }
+    .stat-card .lbl { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+    /* ── PROBLEM ── */
+    #problem { background: var(--bg-alt); }
+    .cols-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; margin-top: 48px; }
+    .card {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow);
+    }
+    .card-icon {
+      width: 40px; height: 40px; border-radius: 8px;
+      background: var(--blue-light); display: flex; align-items: center; justify-content: center;
+      margin-bottom: 16px; font-size: 18px;
+    }
+    .card h3 { color: var(--text); }
+    .card p { font-size: 14px; margin-top: 6px; }
+
+    /* ── DATA ── */
+    #data { background: var(--bg); }
+    .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-top: 48px; align-items: start; }
+    .data-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .data-stat {
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px; background: var(--bg-alt);
+    }
+    .data-stat .n { font-size: 1.5rem; font-weight: 700; color: var(--blue); }
+    .data-stat .d { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .feature-tree { margin-top: 0; }
+    .tree-root {
+      font-size: 13px; font-weight: 600;
+      background: var(--blue); color: #fff;
+      padding: 8px 16px; border-radius: 6px;
+      display: inline-block; margin-bottom: 16px;
+    }
+    .tree-branches { display: flex; flex-direction: column; gap: 8px; }
+    .tree-branch {
+      display: flex; align-items: flex-start; gap: 10px;
+    }
+    .branch-label {
+      font-size: 12px; font-weight: 600;
+      background: var(--blue-light); color: var(--blue);
+      padding: 3px 10px; border-radius: 4px; white-space: nowrap; flex-shrink: 0;
+    }
+    .branch-items { font-size: 12px; color: var(--muted); padding-top: 3px; }
+
+    /* ── INSIGHTS ── */
+    #insights { background: var(--bg-alt); }
+    .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 48px; }
+    .chart-card {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow);
+    }
+    .chart-card h3 { font-size: 14px; color: var(--text); margin-bottom: 4px; }
+    .chart-card .chart-sub { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
+    .chart-wrap { position: relative; height: 220px; }
+    .insight-callout {
+      background: var(--blue-light); border-left: 3px solid var(--blue);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      padding: 14px 18px; margin-top: 16px;
+    }
+    .insight-callout p { font-size: 13px; color: var(--blue); max-width: none; }
+
+    /* ── MODEL ── */
+    #model { background: var(--bg); }
+    .pipeline {
+      display: flex; align-items: center; gap: 0;
+      margin: 48px 0 40px; flex-wrap: wrap;
+    }
+    .pipe-step {
+      background: var(--bg-alt); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px 20px; flex: 1; min-width: 140px;
+      text-align: center;
+    }
+    .pipe-step .ps-icon { font-size: 22px; margin-bottom: 6px; }
+    .pipe-step .ps-label { font-size: 12px; font-weight: 600; color: var(--text); }
+    .pipe-step .ps-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .pipe-arrow {
+      color: var(--blue-mid); font-size: 18px; padding: 0 8px; flex-shrink: 0;
+    }
+    .model-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+    .model-card {
+      border: 1px solid var(--border); border-radius: var(--radius); padding: 20px;
+      background: var(--bg-alt);
+    }
+    .model-card.best { border-color: var(--blue); background: var(--blue-light); }
+    .model-card .mc-name { font-size: 13px; font-weight: 600; color: var(--text); }
+    .model-card .mc-score { font-size: 1.2rem; font-weight: 700; color: var(--blue); margin: 4px 0 2px; }
+    .model-card .mc-weight { font-size: 11px; color: var(--muted); }
+    .badge-best {
+      font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+      background: var(--blue); color: #fff; padding: 2px 7px; border-radius: 4px; margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    /* ── DEMO ── */
+    #demo { background: var(--bg-alt); }
+    .demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 48px; align-items: start; }
+    .demo-form { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px; box-shadow: var(--shadow); }
+    .form-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 20px 0 12px; }
+    .form-section-title:first-child { margin-top: 0; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 0; }
+    .form-group label { font-size: 12px; font-weight: 500; color: var(--text); }
+    .form-group input, .form-group select {
+      padding: 9px 12px; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 14px; font-family: inherit; color: var(--text);
+      background: var(--bg); outline: none; transition: border-color .2s;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: var(--blue-mid); }
+    .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .btn-predict {
+      width: 100%; margin-top: 24px;
+      padding: 13px; border-radius: 8px;
+      background: var(--blue); color: #fff;
+      border: none; font-size: 14px; font-weight: 600;
+      font-family: inherit; cursor: pointer; transition: opacity .2s;
+    }
+    .btn-predict:hover { opacity: .88; }
+    .btn-predict:disabled { opacity: .5; cursor: not-allowed; }
+    .demo-output { display: flex; flex-direction: column; gap: 20px; }
+    .output-card {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow);
+    }
+    .output-card .oc-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
+    .output-card .oc-val {
+      font-size: 2.5rem; font-weight: 700; color: var(--text);
+      margin: 8px 0 4px; line-height: 1;
+    }
+    .output-card .oc-sub { font-size: 13px; color: var(--muted); }
+    .output-empty {
+      display: flex; align-items: center; justify-content: center;
+      height: 120px; color: var(--muted); font-size: 14px;
+      border: 2px dashed var(--border); border-radius: var(--radius);
+    }
+    .breakdown { margin-top: 20px; }
+    .breakdown-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+    }
+    .breakdown-row:last-child { border-bottom: none; }
+    .breakdown-row .br-label { color: var(--muted); }
+    .breakdown-row .br-val { font-weight: 600; color: var(--text); }
+    .scenario-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .scenario-table th {
+      text-align: left; padding: 10px 14px; background: var(--bg-alt);
+      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+      color: var(--muted); border-bottom: 2px solid var(--border);
+    }
+    .scenario-table td { padding: 14px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .scenario-table tbody tr:last-child td { border-bottom: none; }
+    .scenario-table tbody tr:hover { background: var(--bg-alt); }
+    .sc-sub { font-size: 11px; color: var(--muted); font-weight: 400; }
+    .pred-val { font-weight: 700; color: var(--blue); font-size: 14px; white-space: nowrap; }
+    .signal-note { font-size: 12px; color: var(--muted); max-width: 220px; }
+    .util-low { background: #dcfce7; color: #166534; padding: 2px 7px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+    .util-high { background: #fee2e2; color: #991b1b; padding: 2px 7px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 24px; background: var(--bg);
+    }
+    .footer-inner {
+      max-width: 1100px; margin: 0 auto;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 16px;
+    }
+    .footer-inner p { font-size: 13px; color: var(--muted); max-width: none; }
+    .footer-links { display: flex; gap: 20px; }
+    .footer-links a { font-size: 13px; color: var(--muted); text-decoration: none; }
+    .footer-links a:hover { color: var(--text); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      .data-grid, .charts-grid, .demo-grid { grid-template-columns: 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+      .pipeline { flex-direction: column; align-items: stretch; }
+      .pipe-arrow { transform: rotate(90deg); text-align: center; }
+      .nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a class="nav-brand" href="#">Credit Card <span>Forecast</span></a>
+    <ul class="nav-links">
+      <li><a href="#problem">Problem</a></li>
+      <li><a href="#data">Data</a></li>
+      <li><a href="#insights">Insights</a></li>
+      <li><a href="#model">Model</a></li>
+      <li><a href="#demo">Scenarios</a></li>
+    </ul>
+    <a class="nav-gh" href="https://github.com/sm1else-bot/cc-prediction" target="_blank">GitHub ↗</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="container">
+    <div class="hero-tag">Fintech · Predictive Analytics · TVS Motor Capstone</div>
+    <h1>Forecasting Credit Card<br>Spend at the Individual Level</h1>
+    <p class="hero-sub">
+      Predicting average credit card consumption for the next 3 months using customer demographics,
+      transaction history, and financial behaviour to enable banks to personalise offers and
+      anticipate customer needs.
+    </p>
+    <div class="hero-stats">
+      <div class="stat-card">
+        <div class="val">32,820 <span>rows</span></div>
+        <div class="lbl">Training customers</div>
+      </div>
+      <div class="stat-card">
+        <div class="val">116.2</div>
+        <div class="lbl">RMSLE × 100 (threshold: 125)</div>
+      </div>
+      <div class="stat-card">
+        <div class="val">#1 <span>/ batch</span></div>
+        <div class="lbl">Leaderboard rank</div>
+      </div>
+      <div class="stat-card">
+        <div class="val">14</div>
+        <div class="lbl">Models evaluated</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROBLEM -->
+<section id="problem">
+  <div class="container">
+    <div class="section-label">The Problem</div>
+    <h2>Why predict individual credit card spend?</h2>
+    <p>Understanding consumption at the individual level lets banks move from reactive to proactive CRM, offering the right product to the right person at the right time.</p>
+    <div class="cols-3">
+      <div class="card">
+        <div class="card-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <h3>Personalised Marketing</h3>
+        <p>Knowing who will spend more next quarter lets banks target high-value segments with tailored rewards and credit limit upgrades.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h3>Risk Management</h3>
+        <p>Predicting a sharp drop in spending can signal churn risk or financial stress, enabling early intervention before the customer leaves.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        </div>
+        <h3>Revenue Forecasting</h3>
+        <p>Aggregated individual-level predictions give finance teams a bottom-up forecast of interchange income and card portfolio performance.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DATA -->
+<section id="data">
+  <div class="container">
+    <div class="section-label">The Dataset</div>
+    <h2>44 features across three months of behaviour</h2>
+    <p>XYZ Bank provided a snapshot of 32,820 customers with April to June transaction history and demographic data. The target is their average credit card spend in July to September.</p>
+    <div class="data-grid">
+      <div>
+        <div class="data-stats">
+          <div class="data-stat"><div class="n">32,820</div><div class="d">Training customers</div></div>
+          <div class="data-stat"><div class="n">14,067</div><div class="d">Test customers</div></div>
+          <div class="data-stat"><div class="n">44</div><div class="d">Raw features</div></div>
+          <div class="data-stat"><div class="n">92</div><div class="d">Engineered features</div></div>
+          <div class="data-stat"><div class="n">₹6,824</div><div class="d">Mean target spend</div></div>
+          <div class="data-stat"><div class="n">0%</div><div class="d">Missing CC spend data</div></div>
+        </div>
+      </div>
+      <div class="feature-tree">
+        <div class="tree-root">44 Features</div>
+        <div class="tree-branches">
+          <div class="tree-branch">
+            <div class="branch-label">CC Spend</div>
+            <div class="branch-items">Monthly consumption & transaction count (Apr, May, Jun)</div>
+          </div>
+          <div class="tree-branch">
+            <div class="branch-label">Debit Card</div>
+            <div class="branch-items">Monthly debit consumption & count (Apr, May, Jun)</div>
+          </div>
+          <div class="tree-branch">
+            <div class="branch-label">Bank Account</div>
+            <div class="branch-items">Credit/debit amounts, max credit, transaction counts</div>
+          </div>
+          <div class="tree-branch">
+            <div class="branch-label">Investments</div>
+            <div class="branch-items">Demat, FD, insurance holdings (investment_1 to 4)</div>
+          </div>
+          <div class="tree-branch">
+            <div class="branch-label">Loans</div>
+            <div class="branch-items">Personal & vehicle loans (active + closed), EMI amount</div>
+          </div>
+          <div class="tree-branch">
+            <div class="branch-label">Demographics</div>
+            <div class="branch-items">Age, gender, region code, account type, card limit</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- INSIGHTS -->
+<section id="insights">
+  <div class="container">
+    <div class="section-label">Key Insights</div>
+    <h2>What the data tells us</h2>
+    <p>EDA revealed a consistent downward spending trend and meaningful differences across customer segments.</p>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3>Monthly CC Spend Trend</h3>
+        <p class="chart-sub">Average credit card consumption, Apr to predicted Jul-Sep</p>
+        <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+        <div class="insight-callout">
+          <p>Spending declined 59% from April to June. The most recent month is the strongest predictor of future behaviour, especially in log space.</p>
+        </div>
+      </div>
+      <div class="chart-card">
+        <h3>Average Spend by Segment</h3>
+        <p class="chart-sub">Target variable broken down by key demographic features</p>
+        <div class="chart-wrap"><canvas id="segmentChart"></canvas></div>
+        <div class="insight-callout">
+          <p>Female cardholders and savings account holders consistently show higher average spend. Both are meaningful predictors after controlling for other variables.</p>
+        </div>
+      </div>
+      <div class="chart-card">
+        <h3>Base Model Performance (RMSLE × 100)</h3>
+        <p class="chart-sub">All 14 regressors evaluated individually. Lower is better. Threshold = 125.</p>
+        <div class="chart-wrap"><canvas id="modelChart"></canvas></div>
+        <div class="insight-callout">
+          <p>Only Huber Regressor beats the threshold alone. Stacking the models pushes the score down to <strong>116.2</strong>.</p>
+        </div>
+      </div>
+      <div class="chart-card">
+        <h3>Feature Importance (Gain)</h3>
+        <p class="chart-sub">Top predictors from the final CatBoost model</p>
+        <div class="chart-wrap"><canvas id="importanceChart"></canvas></div>
+        <div class="insight-callout">
+          <p>Log-transformed average CC spend is 4× more important than any other feature — the log scale captures the proportional nature of financial behaviour.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MODEL -->
+<section id="model">
+  <div class="container">
+    <div class="section-label">The Model</div>
+    <h2>Multi-level stacking ensemble</h2>
+    <p>Three gradient-boosted tree models generate out-of-fold predictions, which are combined by a Ridge meta-learner trained on those OOF outputs.</p>
+
+    <div class="pipeline">
+      <div class="pipe-step">
+        <div class="ps-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        </div>
+        <div class="ps-label">Feature Engineering</div>
+        <div class="ps-sub">92 features incl. log-space CC trends, utilisation, bank flows</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step">
+        <div class="ps-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        </div>
+        <div class="ps-label">5-Fold CV Split</div>
+        <div class="ps-sub">OOF predictions, leak-free region target encoding per fold</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step">
+        <div class="ps-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="ps-label">Base Models</div>
+        <div class="ps-sub">LightGBM · XGBoost · CatBoost</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step">
+        <div class="ps-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
+        </div>
+        <div class="ps-label">Ridge Meta-Learner</div>
+        <div class="ps-sub">Learns optimal blend of base model predictions</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step">
+        <div class="ps-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <div class="ps-label">RMSLE × 100: 116.2</div>
+        <div class="ps-sub">vs threshold of 125, #1 in batch</div>
+      </div>
+    </div>
+
+    <div class="model-cards">
+      <div class="model-card">
+        <div class="mc-name">LightGBM</div>
+        <div class="mc-score">116.89</div>
+        <div class="mc-weight">Meta-weight: 0.10</div>
+      </div>
+      <div class="model-card">
+        <div class="mc-name">XGBoost</div>
+        <div class="mc-score">116.62</div>
+        <div class="mc-weight">Meta-weight: 0.08</div>
+      </div>
+      <div class="model-card best">
+        <div class="mc-name">CatBoost <span class="badge-best">Best</span></div>
+        <div class="mc-score">116.30</div>
+        <div class="mc-weight">Meta-weight: 0.82</div>
+      </div>
+      <div class="model-card">
+        <div class="mc-name">Ridge Meta (final)</div>
+        <div class="mc-score">116.28</div>
+        <div class="mc-weight">OOF stacked prediction</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DEMO -->
+<section id="demo">
+  <div class="container">
+    <div class="section-label">Model Scenarios</div>
+    <h2>How the model segments customers</h2>
+    <p>Pre-computed outputs from the full 92-feature model across five representative customer profiles.</p>
+
+    <div style="margin-top:16px; padding:14px 18px; background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; font-size:13px; color:#0c4a6e; line-height:1.7;">
+      <strong>Why no interactive demo?</strong> The model's 92 input features include monthly debit card spend, number of debit transactions, bank account inflows and outflows, investment balances, and loan enquiry history. None of these can be collected from a web form without direct access to a bank's transaction ledger. In a production deployment at a fintech like Wellfold, these would come via an open-banking API. What's shown below uses the full feature set with real model outputs.
+    </div>
+
+    <div class="scenario-table-wrap" style="margin-top:32px; overflow-x:auto;">
+      <table class="scenario-table">
+        <thead>
+          <tr>
+            <th>Customer profile</th>
+            <th>Apr spend</th>
+            <th>May spend</th>
+            <th>Jun spend</th>
+            <th>Card limit</th>
+            <th>Utilisation</th>
+            <th>Predicted Q3 avg</th>
+            <th>Signal</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Budget saver</strong><br><span class="sc-sub">Age 28, savings, no loans</span></td>
+            <td>₹1,200</td><td>₹1,000</td><td>₹1,000</td>
+            <td>₹25,000</td>
+            <td><span class="util-low">4%</span></td>
+            <td class="pred-val">₹1,056</td>
+            <td class="signal-note">Consistent low spend; model predicts continuation</td>
+          </tr>
+          <tr>
+            <td><strong>Steady spender</strong><br><span class="sc-sub">Age 34, current, no loans</span></td>
+            <td>₹4,000</td><td>₹4,500</td><td>₹5,000</td>
+            <td>₹50,000</td>
+            <td><span class="util-low">9%</span></td>
+            <td class="pred-val">₹4,820</td>
+            <td class="signal-note">Upward trend; model forecasts continued growth</td>
+          </tr>
+          <tr>
+            <td><strong>Active borrower</strong><br><span class="sc-sub">Age 38, current, personal loan + ₹3k EMI</span></td>
+            <td>₹4,000</td><td>₹4,500</td><td>₹5,000</td>
+            <td>₹50,000</td>
+            <td><span class="util-low">9%</span></td>
+            <td class="pred-val">₹3,940</td>
+            <td class="signal-note">EMI burden moderately reduces discretionary spend</td>
+          </tr>
+          <tr>
+            <td><strong>High utilisation</strong><br><span class="sc-sub">Age 32F, savings, no loans</span></td>
+            <td>₹18,000</td><td>₹21,000</td><td>₹24,000</td>
+            <td>₹25,000</td>
+            <td><span class="util-high">84%</span></td>
+            <td class="pred-val">₹8,200</td>
+            <td class="signal-note">Near-limit usage flagged; high engagement customer</td>
+          </tr>
+          <tr>
+            <td><strong>Premium customer</strong><br><span class="sc-sub">Age 42, current, vehicle loan + ₹5k EMI</span></td>
+            <td>₹15,000</td><td>₹17,000</td><td>₹20,000</td>
+            <td>₹2,00,000</td>
+            <td><span class="util-low">9%</span></td>
+            <td class="pred-val">₹14,500</td>
+            <td class="signal-note">High limit signals creditworthiness; strong Q3 forecast</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="font-size:12px; color:var(--muted); margin-top:12px;">All figures in INR. Predictions are average monthly spend for July–August–September. The training median target is ₹3,141/month; the mean is ₹6,825/month (right-skewed distribution). Model trained on 32,820 customers.</p>
+
+    <div style="margin-top:36px; display:flex; flex-direction:column; gap:20px;">
+      <div class="card">
+        <h3>How to read these numbers</h3>
+        <p style="font-size:14px">All five profiles show strong <strong>regression toward the population mean</strong> — the model's predicted Q3 spend is consistently well below the Apr–Jun average. This is not a model error. It reflects the structural R² ≈ 0.16 of the dataset: individual credit card spend is highly volatile, and without richer behavioural signals, the most probabilistically defensible estimate leans toward the centre of the distribution. The model's value is in <em>ranking</em> customers by expected spend, not in producing precise point forecasts.</p>
+      </div>
+      <div class="card" style="border-left: 3px solid #1d4ed8;">
+        <h3 style="color:#1d4ed8;">Author's Note</h3>
+        <p style="font-size:14px; margin-top:8px;">The dataset's low predictive ceiling is a structural limitation, not a modelling one. With only three months of transaction history, high proportions of missing loan and investment data, and no behavioural signals beyond spend amounts, every approach tested plateaued in the 116 to 118 RMSLE range regardless of model complexity. This project was revisited in 2026 with an updated architecture including tuned gradient boosting, proper out-of-fold stacking, log-space feature engineering, and GPU-accelerated training. The leaderboard score remained unchanged. The data is the constraint.</p>
+      </div>
+      <div class="card" style="border-left: 3px solid #f59e0b; background:#fffbeb;">
+        <h3 style="color:#b45309;">Context for US readers: Indian spending patterns</h3>
+        <p style="font-size:14px; margin-top:8px;">The numbers above reflect <strong>Indian retail banking data</strong>. The median customer in this dataset spends roughly <strong>₹3,000–5,000/month</strong> (~$35–60 USD) on their credit card. This is not a data quality issue — it accurately represents the Indian middle-class consumer segment that TVS Motor Company was targeting.</p>
+        <p style="font-size:14px; margin-top:10px;">A few things to keep in mind:</p>
+        <ul style="font-size:14px; margin-top:6px; padding-left:20px; line-height:1.8;">
+          <li>India's per-capita income is roughly <strong>15–20x lower</strong> than the US. A ₹10,000/month credit card spend is a high-usage customer here.</li>
+          <li>Credit card penetration in India is still growing. Many customers in this dataset hold a single card with a modest limit (₹25,000–75,000, or ~$300–900).</li>
+          <li>EMI (Equated Monthly Instalment) financing is widespread — large purchases like two-wheelers are commonly split into monthly payments, which shows up separately from discretionary spend.</li>
+          <li>The target variable maps to purchase behaviour in the July–September monsoon season, which has distinct spending dynamics for Indian consumers.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <p>TVS Motor Company × Analytics Vidhya DS Bootcamp · 2023 · Jessenth Ebenezer</p>
+    <div class="footer-links">
+      <a href="https://jessenth.com" target="_blank">jessenth.com</a>
+      <a href="https://github.com/sm1else-bot/cc-prediction" target="_blank">GitHub</a>
+      <a href="mailto:jessenth.nyc@gmail.com">Contact</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  /* ── CHARTS ── */
+  const BLUE   = '#1d4ed8';
+  const BLUE2  = '#3b82f6';
+  const BLUE3  = '#93c5fd';
+  const MUTED  = '#94a3b8';
+  const BORDER = '#e2e8f0';
+
+  // 1. Spending trend
+  new Chart(document.getElementById('trendChart'), {
+    type: 'bar',
+    data: {
+      labels: ['April', 'May', 'June', 'Jul-Sep (target)'],
+      datasets: [{
+        data: [16661, 14411, 9031, 6824],
+        backgroundColor: [BLUE3, BLUE2, BLUE, '#0f172a'],
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { grid: { color: BORDER }, ticks: { callback: v => '₹' + (v/1000).toFixed(0) + 'K', font: { size: 11 } } },
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+
+  // 2. Segment spending
+  new Chart(document.getElementById('segmentChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Male', 'Female', 'Current Acct', 'Savings Acct'],
+      datasets: [{
+        data: [6300, 7250, 6050, 7800],
+        backgroundColor: [BLUE2, BLUE, BLUE2, BLUE],
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { grid: { color: BORDER }, ticks: { callback: v => '₹' + (v/1000).toFixed(1) + 'K', font: { size: 11 } } },
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+
+  // 3. Base model performance
+  new Chart(document.getElementById('modelChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Huber','Lasso','Ridge','ElasticNet','GBR','RF','ExtraTrees','AdaBoost','KNN','XGB','CatBoost','MLP','SVR','LinearSVR'],
+      datasets: [
+        {
+          data: [122, 136, 136, 136, 136, 139, 140, 175, 140, 135, 135, 136, 175, 164],
+          backgroundColor: (ctx) => ctx.raw <= 125 ? BLUE : BLUE3,
+          borderRadius: 4,
+        },
+        {
+          type: 'line',
+          data: Array(14).fill(125),
+          borderColor: '#ef4444',
+          borderDash: [6, 3],
+          borderWidth: 1.5,
+          pointRadius: 0,
+          label: 'Threshold',
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { min: 115, grid: { color: BORDER }, ticks: { font: { size: 10 } } },
+        x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 45 } }
+      }
+    }
+  });
+
+  // 4. Feature importance
+  new Chart(document.getElementById('importanceChart'), {
+    type: 'bar',
+    data: {
+      labels: ['log_cc_avg','card_lim','cc_jun','cc_avg','emi_active','log_cc_trend','log_cc_mom2','cc_trend','cc_util','age'],
+      datasets: [{
+        data: [336317, 86168, 32537, 28730, 26231, 24205, 20766, 20397, 18686, 18509],
+        backgroundColor: [BLUE, BLUE2, BLUE2, BLUE2, BLUE3, BLUE3, BLUE3, BLUE3, BLUE3, BLUE3],
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: BORDER }, ticks: { font: { size: 10 }, callback: v => (v/1000).toFixed(0) + 'K' } },
+        y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+
+</script>
+</body>
+</html>
